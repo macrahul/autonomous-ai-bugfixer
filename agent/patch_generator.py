@@ -1,11 +1,19 @@
 from openai import OpenAI
 client = OpenAI()
 
-def create_plan(error_log):
+def generate_patch(file_path, code, error_log):
     prompt = f"""
-    Analyze the error and explain root cause and fix strategy.
+    You are fixing {file_path}.
     Error:
     {error_log}
+
+    Rules:
+    - Minimal changes
+    - No new dependencies
+    - Return unified diff ONLY
+
+    Code:
+    {code}
     """
     res = client.responses.create(
         model="gpt-4o-mini",
