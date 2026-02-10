@@ -1,4 +1,6 @@
 def divide(a, b):
-    return a / b if b != 0 else 0 if b != 0 else 0 if b != 0 else 0
+    if b == 0:
+        return 'Error: Division by zero'
+    return a / b
 
 print(divide(10, 0))

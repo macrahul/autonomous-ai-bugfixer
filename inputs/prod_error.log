@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "repo_clone/app.py", line 2, in <module>
+    print(divide(10, 0))
+  File "repo_clone/app.py", line 1, in divide
+    return a / b
+ZeroDivisionError: division by zero

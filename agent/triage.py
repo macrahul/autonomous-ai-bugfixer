@@ -1,5 +1,5 @@
-print("✅ LOADED NEW TRIAGE CODE")
+print("✅ LOADED TRIAGE")
 
 def is_fixable(error_log: str) -> bool:
-    print("🔥 TRIAGE CALLED WITH:", error_log)
+    print("🔥 TRIAGE INPUT:\n", error_log)
     return True
