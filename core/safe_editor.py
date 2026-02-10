@@ -1,15 +1,17 @@
 def apply_safe_fix(file_path: str) -> bool:
     """
     Idempotent safe fix for ZeroDivisionError in divide().
-    Will NOT apply the fix if it already exists.
+    Returns:
+      True  -> fix was applied
+      False -> fix already present OR not applicable
     """
     with open(file_path, "r") as f:
         content = f.read()
 
-    # ✅ IDENTITY CHECK (CRITICAL)
+    # ✅ Fix already exists → NO-OP
     if "if b == 0:" in content:
         print("ℹ️ Safe fix already present. Skipping.")
-        return True
+        return False
 
     lines = content.splitlines(keepends=True)
 
@@ -18,25 +20,23 @@ def apply_safe_fix(file_path: str) -> bool:
     fixed = False
 
     for line in lines:
-        new_lines.append(line)
-
         if line.startswith("def divide"):
             inside_divide = True
+            new_lines.append(line)
             continue
 
         if inside_divide and line.strip() == "return a / b":
-            # Remove the last appended return
-            new_lines.pop()
-
             new_lines.append("    if b == 0:\n")
             new_lines.append("        return 'Error: Division by zero'\n")
             new_lines.append("    return a / b\n")
-
             inside_divide = False
             fixed = True
+            continue
+
+        new_lines.append(line)
 
     if not fixed:
-        print("❌ Safe editor: no applicable change found")
+        print("ℹ️ No applicable change found.")
         return False
 
     with open(file_path, "w") as f:

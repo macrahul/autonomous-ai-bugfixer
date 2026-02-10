@@ -1,6 +1,7 @@
 from agent.triage import is_fixable
 from agent.planner import create_plan
 from agent.file_finder import find_files
+
 from core.repo_manager import get_repo_tree
 from core.safe_editor import apply_safe_fix
 from core.git_ops import create_branch, commit_all, push_branch
@@ -50,28 +51,24 @@ if not valid_files:
     sys.exit("No valid files found to fix")
 
 # ---------------------------
-# 5. CREATE BRANCH FIRST ✅
+# 5. Apply fix FIRST (no branch yet)
 # ---------------------------
-branch = f"ai-fix-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
-print("🌿 CREATING BRANCH:", branch)
-create_branch(branch)
+fix_applied = False
 
-# ---------------------------
-# 6. Apply fix + verify
-# ---------------------------
 for file in valid_files:
     local_path = f"repo_clone/{file}"
-
     print("✅ OPENING FILE:", local_path)
 
     print("🛠️ APPLYING SAFE FIX...")
-    success = apply_safe_fix(local_path)
-    if not success:
-        sys.exit("Safe fix application failed")
+    applied = apply_safe_fix(local_path)
 
-    print("✅ SAFE FIX APPLIED")
+    if applied:
+        fix_applied = True
+        print("✅ SAFE FIX APPLIED")
+    else:
+        print("ℹ️ No fix needed for this file")
 
-    # Verification
+    # Verification (always run)
     print("🔍 VERIFYING FIX...")
     result = subprocess.run(
         ["python", local_path],
@@ -88,21 +85,35 @@ for file in valid_files:
     print("✅ VERIFICATION PASSED")
 
 # ---------------------------
-# 7. Commit & push (IDEMPOTENT ✅)
+# 6. NO-OP EXIT (IMPORTANT)
+# ---------------------------
+if not fix_applied:
+    print("ℹ️ No fixes were applied. Skipping branch/commit/PR.")
+    print("✅ AUTONOMOUS FIX FLOW COMPLETED (NO-OP)")
+    sys.exit(0)
+
+# ---------------------------
+# 7. Create branch (ONLY if fix applied)
+# ---------------------------
+branch = f"ai-fix-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
+print("🌿 CREATING BRANCH:", branch)
+create_branch(branch)
+
+# ---------------------------
+# 8. Commit & push
 # ---------------------------
 print("📦 COMMITTING FIX")
 committed = commit_all("Autonomous AI: fix production error")
 
 if not committed:
     print("ℹ️ No changes to commit. Skipping push & PR.")
-    print("✅ AUTONOMOUS FIX FLOW COMPLETED (NO-OP)")
     sys.exit(0)
 
 print("🚀 PUSHING BRANCH")
 push_branch(branch)
 
 # ---------------------------
-# 8. Create PR
+# 9. Create PR
 # ---------------------------
 print("🔀 CREATING PR")
 create_pr(
