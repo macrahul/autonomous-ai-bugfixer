@@ -103,7 +103,7 @@ for file in valid_files:
     Autonomous AI Agent
     """
     )
-    
+
     if not success:
         exit("Patch application failed")
 
