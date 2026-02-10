@@ -1,0 +1,5 @@
+  File "/Users/rahulgupta/Desktop/work/autonomous-ai-bugfixer/autonomous-ai-bugfixer/repo_clone/app.py", line 4, in <module>
+    print(divide(10, 0))
+  File "/Users/rahulgupta/Desktop/work/autonomous-ai-bugfixer/autonomous-ai-bugfixer/repo_clone/app.py", line 2, in divide
+    return a / b
+ZeroDivisionError: division by zero
