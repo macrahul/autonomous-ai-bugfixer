@@ -1,21 +1,19 @@
 from github import Github
 import os
 
-def create_pr(repo_name, branch, file_path, content, sha):
+def create_pr(repo_name: str, branch: str, title: str, body: str):
+    """
+    Creates a GitHub Pull Request from branch -> main
+    """
     g = Github(os.getenv("GITHUB_TOKEN"))
     repo = g.get_repo(repo_name)
 
-    repo.update_file(
-        path=file_path,
-        message="Autonomous AI: bug fix",
-        content=content,
-        sha=sha,
-        branch=branch
-    )
-
-    repo.create_pull(
-        title="Autonomous AI Fix",
-        body="Root cause, fix, and validation done by AI agent.",
+    pr = repo.create_pull(
+        title=title,
+        body=body,
         head=branch,
         base="main"
     )
+
+    print("✅ PR CREATED:", pr.html_url)
+    return pr.html_url
