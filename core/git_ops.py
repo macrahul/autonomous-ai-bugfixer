@@ -13,9 +13,19 @@ def _run(cmd):
 def create_branch(branch_name: str):
     _run(["git", "checkout", "-b", branch_name])
 
-def commit_all(message: str):
+def commit_all(message: str) -> bool:
+    """
+    Commits changes if any exist.
+    Returns True if a commit was created, False if no changes.
+    """
+    status = _run(["git", "status", "--porcelain"])
+    if not status.strip():
+        print("ℹ️ No changes to commit. Skipping commit.")
+        return False
+
     _run(["git", "add", "."])
     _run(["git", "commit", "-m", message])
+    return True
 
 def push_branch(branch_name: str):
     _run(["git", "push", "-u", "origin", branch_name])

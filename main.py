@@ -1,11 +1,9 @@
 from agent.triage import is_fixable
 from agent.planner import create_plan
 from agent.file_finder import find_files
-
 from core.repo_manager import get_repo_tree
 from core.safe_editor import apply_safe_fix
 from core.git_ops import create_branch, commit_all, push_branch
-
 from agent.pr_agent import create_pr
 
 import subprocess
@@ -52,7 +50,7 @@ if not valid_files:
     sys.exit("No valid files found to fix")
 
 # ---------------------------
-# 5. CREATE BRANCH FIRST ✅✅
+# 5. CREATE BRANCH FIRST ✅
 # ---------------------------
 branch = f"ai-fix-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
 print("🌿 CREATING BRANCH:", branch)
@@ -90,10 +88,15 @@ for file in valid_files:
     print("✅ VERIFICATION PASSED")
 
 # ---------------------------
-# 7. Commit & push
+# 7. Commit & push (IDEMPOTENT ✅)
 # ---------------------------
 print("📦 COMMITTING FIX")
-commit_all("Autonomous AI: fix production error")
+committed = commit_all("Autonomous AI: fix production error")
+
+if not committed:
+    print("ℹ️ No changes to commit. Skipping push & PR.")
+    print("✅ AUTONOMOUS FIX FLOW COMPLETED (NO-OP)")
+    sys.exit(0)
 
 print("🚀 PUSHING BRANCH")
 push_branch(branch)
