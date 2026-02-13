@@ -3,15 +3,17 @@ from agent.planner import create_plan
 from agent.file_finder import find_files
 
 from core.repo_manager import get_repo_tree
-from core.safe_editor import apply_safe_fix
 from core.git_ops import create_branch, commit_all, push_branch
 from agent.pr_agent import create_pr
+from agent.reflection import should_retry
+from agent.registry import select_executor
 
 import subprocess
 import datetime
 import sys
 
 REPO_NAME = "macrahul/autonomous-ai-bugfixer"
+MAX_RETRIES = 1
 
 # ---------------------------
 # 1. Read production error
@@ -51,7 +53,7 @@ if not valid_files:
     sys.exit("No valid files found to fix")
 
 # ---------------------------
-# 5. Apply fix FIRST (no branch yet)
+# 5. Apply fix with retry
 # ---------------------------
 fix_applied = False
 
@@ -59,33 +61,48 @@ for file in valid_files:
     local_path = f"repo_clone/{file}"
     print("✅ OPENING FILE:", local_path)
 
-    print("🛠️ APPLYING SAFE FIX...")
-    applied = apply_safe_fix(local_path)
+    attempt = 0
 
-    if applied:
-        fix_applied = True
-        print("✅ SAFE FIX APPLIED")
-    else:
-        print("ℹ️ No fix needed for this file")
+    while True:
+        executor = select_executor(error_log)
 
-    # Verification (always run)
-    print("🔍 VERIFYING FIX...")
-    result = subprocess.run(
-        ["python", local_path],
-        capture_output=True,
-        text=True
-    )
+        if executor:
+            print(f"🧠 Selected Executor: {executor.name()}")
+            applied = executor.apply_fix(local_path)
+        else:
+            print("❌ No executor found for this error.")
+            sys.exit(1)
 
-    print("STDOUT:", result.stdout)
-    print("STDERR:", result.stderr)
+        if applied:
+            fix_applied = True
+            print("✅ SAFE FIX APPLIED")
+        else:
+            print("ℹ️ No fix needed or already present")
 
-    if result.returncode != 0:
-        sys.exit("❌ Verification failed")
+        # Verification
+        print("🔍 VERIFYING FIX...")
+        result = subprocess.run(
+            ["python", local_path],
+            capture_output=True,
+            text=True
+        )
 
-    print("✅ VERIFICATION PASSED")
+        print("STDOUT:", result.stdout)
+        print("STDERR:", result.stderr)
+
+        if result.returncode == 0:
+            print("✅ VERIFICATION PASSED")
+            break  # ✅ Success
+
+        attempt += 1
+
+        if not should_retry(attempt, MAX_RETRIES):  # [2]
+            sys.exit("❌ Fix failed after retries")
+
+        print("🔁 Retrying fix attempt...")
 
 # ---------------------------
-# 6. NO-OP EXIT (IMPORTANT)
+# 6. NO-OP EXIT
 # ---------------------------
 if not fix_applied:
     print("ℹ️ No fixes were applied. Skipping branch/commit/PR.")
@@ -93,7 +110,7 @@ if not fix_applied:
     sys.exit(0)
 
 # ---------------------------
-# 7. Create branch (ONLY if fix applied)
+# 7. Create branch
 # ---------------------------
 branch = f"ai-fix-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
 print("🌿 CREATING BRANCH:", branch)
