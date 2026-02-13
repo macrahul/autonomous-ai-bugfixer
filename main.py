@@ -27,7 +27,7 @@ plan = create_plan(error_log)
 print("✅ PLAN:", plan)
 
 # ---------------------------
-# 2. Parse individual errors
+# 2. Parse log into separate errors
 # ---------------------------
 error_blocks = parse_error_blocks(error_log)
 
@@ -35,17 +35,29 @@ if not error_blocks:
     sys.exit("No valid traceback blocks found.")
 
 # ---------------------------
-# 3. Process each error separately
+# 3. Process each error independently
 # ---------------------------
 for error_block, file_path in error_blocks:
 
-    print(f"\n🚨 Processing error for: {file_path}")
+    print("\n====================================")
+    print(f"🚨 Processing error for: {file_path}")
+    print("====================================")
 
+    # Only handle project files
     if not file_path.startswith("repo_clone/"):
         print("⚠ Skipping non-project file")
         continue
 
     local_path = file_path
+
+    # ✅ Always reset to clean main before new fix
+    subprocess.run(["git", "checkout", "main"])
+    subprocess.run(["git", "reset", "--hard"])
+
+    branch = f"ai-fix-{file_path.replace('/', '-').replace('.py','')}-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
+    print("🌿 CREATING BRANCH:", branch)
+    create_branch(branch)
+
     attempt = 0
     fix_applied = False
 
@@ -66,6 +78,9 @@ for error_block, file_path in error_blocks:
         else:
             print("ℹ️ No fix needed or already present")
 
+        # ---------------------------
+        # Verification
+        # ---------------------------
         print("🔍 VERIFYING FIX...")
         result = subprocess.run(
             ["python", local_path],
@@ -89,18 +104,17 @@ for error_block, file_path in error_blocks:
         print("🔁 Retrying fix attempt...")
 
     # ---------------------------
-    # 4. Create PR for this error only
+    # Create PR only if fix applied
     # ---------------------------
     if fix_applied:
-        branch = f"ai-fix-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
-        print("🌿 CREATING BRANCH:", branch)
-        create_branch(branch)
-
+        print("📦 COMMITTING FIX")
         committed = commit_all(f"Autonomous AI fix for {file_path}")
 
         if committed:
+            print("🚀 PUSHING BRANCH")
             push_branch(branch)
 
+            print("🔀 CREATING PR")
             create_pr(
                 repo_name=REPO_NAME,
                 branch=branch,
@@ -120,5 +134,9 @@ Autonomous AI Agent
             )
 
             print("✅ PR CREATED")
+
+    # ✅ Return to clean main before next error
+    subprocess.run(["git", "checkout", "main"])
+    subprocess.run(["git", "reset", "--hard"])
 
 print("\n✅ MULTI-ERROR PROCESSING COMPLETED")
