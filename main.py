@@ -1,10 +1,9 @@
 from agent.triage import is_fixable
 from agent.planner import create_plan
-from agent.file_finder import find_files
 from agent.registry import select_executor
 from agent.reflection import should_retry
+from agent.log_parser import parse_error_blocks
 
-from core.repo_manager import get_repo_tree
 from core.git_ops import create_branch, commit_all, push_branch
 from agent.pr_agent import create_pr
 
@@ -21,57 +20,45 @@ MAX_RETRIES = 1
 with open("inputs/prod_error.log") as f:
     error_log = f.read()
 
-# ---------------------------
-# 2. Triage
-# ---------------------------
 if not is_fixable(error_log):
     sys.exit("Not fixable by AI")
 
-# ---------------------------
-# 3. Planning
-# ---------------------------
 plan = create_plan(error_log)
 print("✅ PLAN:", plan)
 
 # ---------------------------
-# 4. Repo context
+# 2. Parse individual errors
 # ---------------------------
-repo_tree = get_repo_tree(REPO_NAME)
-files = find_files(error_log, repo_tree)
+error_blocks = parse_error_blocks(error_log)
 
-valid_files = []
-for file in files:
-    if file.endswith(".py"):
-        if file.startswith("repo_clone/"):
-            valid_files.append(file.replace("repo_clone/", ""))
-        else:
-            valid_files.append(file)
-
-print("✅ VALID FILES:", valid_files)
-
-if not valid_files:
-    sys.exit("No valid files found to fix")
+if not error_blocks:
+    sys.exit("No valid traceback blocks found.")
 
 # ---------------------------
-# 5. Apply fix with retry
+# 3. Process each error separately
 # ---------------------------
-fix_applied = False
+for error_block, file_path in error_blocks:
 
-for file in valid_files:
-    local_path = f"repo_clone/{file}"
-    print("✅ OPENING FILE:", local_path)
+    print(f"\n🚨 Processing error for: {file_path}")
 
+    if not file_path.startswith("repo_clone/"):
+        print("⚠ Skipping non-project file")
+        continue
+
+    local_path = file_path
     attempt = 0
+    fix_applied = False
 
     while True:
-        executor = select_executor(error_log)
+        executor = select_executor(error_block)
 
-        if executor:
-            print(f"🧠 Selected Executor: {executor.name()}")
-            applied = executor.apply_fix(local_path)
-        else:
+        if not executor:
             print("❌ No executor found for this error.")
-            sys.exit(1)
+            break
+
+        print(f"🧠 Selected Executor: {executor.name()}")
+
+        applied = executor.apply_fix(local_path)
 
         if applied:
             fix_applied = True
@@ -79,7 +66,6 @@ for file in valid_files:
         else:
             print("ℹ️ No fix needed or already present")
 
-        # Verification
         print("🔍 VERIFYING FIX...")
         result = subprocess.run(
             ["python", local_path],
@@ -92,67 +78,47 @@ for file in valid_files:
 
         if result.returncode == 0:
             print("✅ VERIFICATION PASSED")
-            break  # ✅ Success
+            break
 
         attempt += 1
 
         if not should_retry(attempt, MAX_RETRIES):  # [2]
-            sys.exit("❌ Fix failed after retries")
+            print("❌ Fix failed after retries")
+            break
 
         print("🔁 Retrying fix attempt...")
 
-# ---------------------------
-# 6. NO-OP EXIT
-# ---------------------------
-if not fix_applied:
-    print("ℹ️ No fixes were applied. Skipping branch/commit/PR.")
-    print("✅ AUTONOMOUS FIX FLOW COMPLETED (NO-OP)")
-    sys.exit(0)
+    # ---------------------------
+    # 4. Create PR for this error only
+    # ---------------------------
+    if fix_applied:
+        branch = f"ai-fix-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
+        print("🌿 CREATING BRANCH:", branch)
+        create_branch(branch)
 
-# ---------------------------
-# 7. Create branch
-# ---------------------------
-branch = f"ai-fix-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
-print("🌿 CREATING BRANCH:", branch)
-create_branch(branch)
+        committed = commit_all(f"Autonomous AI fix for {file_path}")
 
-# ---------------------------
-# 8. Commit & push
-# ---------------------------
-print("📦 COMMITTING FIX")
-committed = commit_all("Autonomous AI: fix production error")
+        if committed:
+            push_branch(branch)
 
-if not committed:
-    print("ℹ️ No changes to commit. Skipping push & PR.")
-    sys.exit(0)
-
-print("🚀 PUSHING BRANCH")
-push_branch(branch)
-
-# ---------------------------
-# 9. Create PR
-# ---------------------------
-print("🔀 CREATING PR")
-create_pr(
-    repo_name=REPO_NAME,
-    branch=branch,
-    title="Autonomous AI Fix: Production Error",
-    body=f"""
+            create_pr(
+                repo_name=REPO_NAME,
+                branch=branch,
+                title=f"Autonomous AI Fix for {file_path}",
+                body=f"""
 ### 🤖 Autonomous AI Fix
 
-**Detected From**
-Production error logs
+**File**
+{file_path}
 
 **Plan**
 {plan}
 
-**Verification**
-✅ Local execution passed
-✅ No runtime exception
-
 **Generated By**
 Autonomous AI Agent
 """
-)
+            )
 
-print("✅ AUTONOMOUS FIX FLOW COMPLETED")
+            print("✅ PR CREATED")
+
+print("\n✅ MULTI-ERROR PROCESSING COMPLETED")
