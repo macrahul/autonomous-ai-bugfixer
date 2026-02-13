@@ -12,3 +12,8 @@ Traceback (most recent call last):
   File "repo_clone/dict_utils.py", line 2, in <module>
     print(get_value({}))
 KeyError: 'name'
+
+Traceback (most recent call last):
+  File "repo_clone/type_utils.py", line 4, in <module>
+    print(add_one("hello"))
+TypeError: can only concatenate str (not "int") to str
