@@ -1,12 +1,12 @@
 from agent.triage import is_fixable
 from agent.planner import create_plan
 from agent.file_finder import find_files
+from agent.registry import select_executor
+from agent.reflection import should_retry
 
 from core.repo_manager import get_repo_tree
 from core.git_ops import create_branch, commit_all, push_branch
 from agent.pr_agent import create_pr
-from agent.reflection import should_retry
-from agent.registry import select_executor
 
 import subprocess
 import datetime
