@@ -24,9 +24,6 @@ with open("inputs/prod_error.log") as f:
 if not is_fixable(error_log):
     sys.exit("Not fixable by AI")
 
-plan = create_plan(error_log)
-print("✅ PLAN:", plan)
-
 # ---------------------------
 # 2. Parse log into individual errors
 # ---------------------------
@@ -43,6 +40,10 @@ for error_block, file_path in error_blocks:
     print("\n====================================")
     print(f"🚨 Processing error for: {file_path}")
     print("====================================")
+
+    # ✅ Generate plan ONLY for this error
+    plan = create_plan(error_block)
+    print("✅ PLAN:", plan)
 
     if not file_path.startswith("repo_clone/"):
         print("⚠ Skipping non-project file")
