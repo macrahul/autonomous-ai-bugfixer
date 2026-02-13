@@ -27,7 +27,7 @@ plan = create_plan(error_log)
 print("✅ PLAN:", plan)
 
 # ---------------------------
-# 2. Parse log into separate errors
+# 2. Parse log into individual errors
 # ---------------------------
 error_blocks = parse_error_blocks(error_log)
 
@@ -43,14 +43,13 @@ for error_block, file_path in error_blocks:
     print(f"🚨 Processing error for: {file_path}")
     print("====================================")
 
-    # Only handle project files
     if not file_path.startswith("repo_clone/"):
         print("⚠ Skipping non-project file")
         continue
 
     local_path = file_path
 
-    # ✅ Always reset to clean main before new fix
+    # ✅ Reset to clean main before each PR
     subprocess.run(["git", "checkout", "main"])
     subprocess.run(["git", "reset", "--hard"])
 
@@ -78,9 +77,6 @@ for error_block, file_path in error_blocks:
         else:
             print("ℹ️ No fix needed or already present")
 
-        # ---------------------------
-        # Verification
-        # ---------------------------
         print("🔍 VERIFYING FIX...")
         result = subprocess.run(
             ["python", local_path],
@@ -104,7 +100,7 @@ for error_block, file_path in error_blocks:
         print("🔁 Retrying fix attempt...")
 
     # ---------------------------
-    # Create PR only if fix applied
+    # 4. Create PR only if fix applied
     # ---------------------------
     if fix_applied:
         print("📦 COMMITTING FIX")
