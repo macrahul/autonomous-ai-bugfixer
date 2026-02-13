@@ -8,7 +8,7 @@ class AIExecutor:
     def applies_to(self, error_log: str) -> bool:
         return True  # Always fallback
 
-    def apply_fix(self, file_path: str) -> bool:
+    def apply_fix(self, file_path: str, error_log: str) -> bool:
         client = OpenAI()
 
         with open(file_path, "r") as f:
