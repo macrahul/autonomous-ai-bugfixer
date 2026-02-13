@@ -7,6 +7,8 @@ def _run(cmd):
         text=True
     )
     if result.returncode != 0:
+        if "nothing to commit" in result.stderr.lower():
+            return result.stdout.strip()
         raise RuntimeError(result.stderr)
     return result.stdout.strip()
 
