@@ -69,7 +69,10 @@ for error_block, file_path in error_blocks:
 
         print(f"🧠 Selected Executor: {executor.name()}")
 
-        applied = executor.apply_fix(local_path)
+        if executor.name() == "AIExecutor":
+            applied = executor.apply_fix(local_path, error_block)
+        else:
+            applied = executor.apply_fix(local_path)
 
         if applied:
             fix_applied = True
