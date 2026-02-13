@@ -10,25 +10,28 @@ class IndexErrorExecutor(BaseExecutor):
 
     def apply_fix(self, file_path: str) -> bool:
         with open(file_path, "r") as f:
-            content = f.read()
+            lines = f.readlines()
 
-        # Simple guard for list indexing
-        if "IndexError" not in content and "[" not in content:
-            return False
-
-        # Minimal safe strategy example
-        if "if len(" in content:
-            return False  # Already guarded
-
-        lines = content.splitlines(keepends=True)
         new_lines = []
         applied = False
 
         for line in lines:
-            if "[" in line and "]" in line and "=" not in line:
-                indent = " " * (len(line) - len(line.lstrip()))
-                new_lines.append(f"{indent}if len({line.strip().split('[')[0]}) > 0:\n")
-                new_lines.append(f"{indent}    {line}")
+            stripped = line.strip()
+
+            # Match: return items[0]
+            if stripped.startswith("return") and "[" in stripped and "]" in stripped:
+                indent = line[:len(line) - len(line.lstrip())]
+
+                # Extract variable safely
+                # Example: return items[0]
+                variable_part = stripped.replace("return", "").strip()
+                variable_name = variable_part.split("[")[0].strip()
+
+                new_lines.append(f"{indent}if len({variable_name}) > 0:\n")
+                new_lines.append(f"{indent}    return {variable_name}[0]\n")
+                new_lines.append(f"{indent}else:\n")
+                new_lines.append(f"{indent}    return None\n")
+
                 applied = True
             else:
                 new_lines.append(line)
