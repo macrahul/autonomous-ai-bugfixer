@@ -1,4 +1,5 @@
 from openai import OpenAI
+import re
 
 class AIExecutor:
 
@@ -15,15 +16,17 @@ class AIExecutor:
             code = f.read()
 
         prompt = f"""
-Fix the following Python code based on this error:
+Fix the following Python code based on this error.
+
+Return ONLY valid Python code.
+Do NOT include markdown fences.
+Do NOT include explanations.
 
 ERROR:
 {error_log}
 
 CODE:
 {code}
-
-Return only corrected Python code.
 """
 
         response = client.responses.create(
@@ -32,6 +35,10 @@ Return only corrected Python code.
         )
 
         fixed_code = response.output_text.strip()
+
+        # ✅ Remove markdown code fences if present
+        fixed_code = re.sub(r"^```.*?\n", "", fixed_code)
+        fixed_code = re.sub(r"\n```$", "", fixed_code)
 
         if not fixed_code:
             return False
