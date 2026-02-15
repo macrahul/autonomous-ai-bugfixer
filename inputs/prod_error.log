@@ -1,17 +1,7 @@
 Traceback (most recent call last):
-  File "repo_clone/app.py", line 2, in <module>
-    print(divide(10, 0))
-ZeroDivisionError: division by zero
-
-Traceback (most recent call last):
   File "repo_clone/list_utils.py", line 2, in <module>
     print(get_first_item([]))
 IndexError: list index out of range
-
-Traceback (most recent call last):
-  File "repo_clone/dict_utils.py", line 2, in <module>
-    print(get_value({}))
-KeyError: 'name'
 
 Traceback (most recent call last):
   File "repo_clone/type_utils.py", line 4, in <module>
