@@ -1,4 +1,4 @@
 def add_one(x):
-    return x + 1
+    return str(int(x) + 1)
 
 print(add_one("hello"))
