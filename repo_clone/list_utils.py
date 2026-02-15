@@ -1,4 +1,7 @@
 def get_first_item(items):
-    return items[0]
+    if len(items) > 0:
+        return items[0]
+    else:
+        return None
 
 print(get_first_item([]))
