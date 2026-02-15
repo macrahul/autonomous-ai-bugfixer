@@ -1,4 +1,4 @@
 def get_value(d):
-    return d["name"]
+        return d.get("name")
 
 print(get_value({}))
